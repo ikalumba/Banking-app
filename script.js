@@ -72,4 +72,72 @@ const currencies = new Map([
 
 const movements = [200, 450, -400, 3000, -650, -130, 70, 1300];
 
+//////////////////////REDO
+const displayMovements = function (movements) {
+  movements.forEach(function (mov, i) {
+    const html = `<div class="movements__row">
+    <div class="movements__type movements__type--${
+      mov > 0 ? 'deposit' : 'withdrawal'
+    }">${i + 1} ${mov > 0 ? 'deposit' : 'withdrawal'}</div>
+    <div class="movements__date">3 days ago</div>
+    <div class="movements__value">${mov}€</div>
+  </div>`;
+
+    containerMovements.insertAdjacentHTML('afterbegin', html);
+  });
+};
+
+// Calculating the total deposits
+const displaytotalDeposits = function (movements) {
+  const totalDeposits = movements
+    .filter(mov => mov > 0)
+    .reduce((acc, curr) => acc + curr);
+  labelSumIn.textContent = totalDeposits;
+};
+
+const displaytotalWithdraw = function (movements) {
+  const totalWithdrawal = movements
+    .filter(mov => mov < 0)
+    .reduce((acc, curr) => acc + curr);
+  labelSumOut.textContent = totalWithdrawal;
+};
+
+const displayBalance = function (movements) {
+  const accountBal = movements.reduce((acc, curr) => acc + curr);
+  labelBalance.textContent = accountBal;
+};
+
+console.log(new Date().toLocaleDateString());
+
+const createUserNames = function (accs) {
+  accs.forEach(acc => {
+    acc.username = acc.owner
+      .toLowerCase()
+      .split(' ')
+      .map(name => name[0])
+      .join('');
+  });
+};
+createUserNames(accounts);
+
+// account1.movements.push(5000);
+let currentAccount;
+
+btnLogin.addEventListener('click', function (e) {
+  e.preventDefault();
+  currentAccount = accounts.find(
+    acc => acc.username === inputLoginUsername.value
+  );
+
+  if (currentAccount?.pin === Number(inputLoginPin.value)) {
+    containerApp.style.opacity = 1;
+    const currentDate = new Date().toLocaleDateString();
+    labelDate.textContent = currentDate;
+    displayMovements(currentAccount.movements);
+    displaytotalDeposits(currentAccount.movements);
+    displaytotalWithdraw(currentAccount.movements);
+    displayBalance(currentAccount.movements);
+  }
+});
+
 /////////////////////////////////////////////////
