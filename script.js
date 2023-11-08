@@ -5,7 +5,7 @@
 
 // Data
 const account1 = {
-  owner: 'Jonas Schmedtmann',
+  owner: 'Isaac Kalumba',
   movements: [200, 450, -400, 3000, -650, -130, 70, 1300],
   interestRate: 1.2, // %
   pin: 1111,
@@ -73,6 +73,11 @@ const currencies = new Map([
 const movements = [200, 450, -400, 3000, -650, -130, 70, 1300];
 
 //////////////////////REDO
+
+const displayWelcomeMessage = function (acc) {
+  const firstName = acc.owner.split(' ').splice(0, 1).join('');
+  labelWelcome.textContent = `Welcome ${firstName}!`;
+};
 const displayMovements = function (movements) {
   movements.forEach(function (mov, i) {
     const html = `<div class="movements__row">
@@ -88,18 +93,22 @@ const displayMovements = function (movements) {
 };
 
 // Calculating the total deposits
-const displaytotalDeposits = function (movements) {
+const displaySummary = function (movements) {
   const totalDeposits = movements
     .filter(mov => mov > 0)
     .reduce((acc, curr) => acc + curr);
   labelSumIn.textContent = totalDeposits;
-};
 
-const displaytotalWithdraw = function (movements) {
   const totalWithdrawal = movements
     .filter(mov => mov < 0)
     .reduce((acc, curr) => acc + curr);
   labelSumOut.textContent = totalWithdrawal;
+
+  const interest = movements
+    .filter(mov => mov > 0)
+    .map(mov => (mov * currentAccount.interestRate) / 100)
+    .reduce((acc, int) => acc + int, 0);
+  labelSumInterest.textContent = interest;
 };
 
 const displayBalance = function (movements) {
@@ -134,10 +143,77 @@ btnLogin.addEventListener('click', function (e) {
     const currentDate = new Date().toLocaleDateString();
     labelDate.textContent = currentDate;
     displayMovements(currentAccount.movements);
-    displaytotalDeposits(currentAccount.movements);
-    displaytotalWithdraw(currentAccount.movements);
     displayBalance(currentAccount.movements);
+    displayWelcomeMessage(currentAccount);
+    displaySummary(currentAccount.movements);
+    runTimer();
+
+    btnTransfer.addEventListener('click', function (e) {
+      e.preventDefault();
+      const recipientAcc = accounts.find(
+        acc => acc.username === inputTransferTo.value
+      );
+      const transferAmount = Number(inputTransferAmount.value);
+      recipientAcc.movements.push(transferAmount);
+      currentAccount.movements.push(-transferAmount);
+      containerMovements.innerHTML = '';
+      displayMovements(currentAccount.movements);
+
+      // clear form
+      inputTransferTo.value = '';
+      inputTransferAmount.value = '';
+    });
+    btnLoan.addEventListener('click', function (e) {
+      e.preventDefault();
+      const reqLoanAmount = inputLoanAmount.value;
+      const loanLimit = Math.max(...currentAccount.movements) * 0.25;
+      console.log(loanLimit);
+      if (loanLimit >= reqLoanAmount) {
+        setTimeout(function () {
+          containerMovements.innerHTML = '';
+          currentAccount.movements.push(reqLoanAmount);
+          displayMovements(currentAccount.movements);
+        }, 4000);
+      } else {
+        alert(
+          `The requested loan amount is too high, it should be at most 25% of your highest deposited amount`
+        );
+      }
+      inputLoanAmount.value = '';
+    });
   }
+
+  inputLoginUsername.value = '';
+  inputLoginPin.value = '';
 });
 
 /////////////////////////////////////////////////
+// Get the <div> element by its id
+// var timer = document.getElementById("timer");
+
+// Set the end time to 5 minutes from now
+const runTimer = function () {
+  const endTime = new Date().setMinutes(new Date().getMinutes() + 5);
+  // endTime.setMinutes(endTime.getMinutes() + 5);
+
+  // Update the timer every second
+  const interval = setInterval(function () {
+    // Get the current time
+    const now = new Date();
+    // Calculate the time difference in milliseconds
+    const diff = endTime - now;
+    // Convert the time difference to minutes and seconds
+    const minutes = Math.floor(diff / 1000 / 60);
+    const seconds = Math.floor((diff / 1000) % 60);
+    // Display the timer
+    labelTimer.innerHTML = `${minutes.toString().padStart(2, '0')}:${seconds
+      .toString()
+      .padStart(2, '0')} `;
+    // If the time is up, stop the interval and display a message
+    if (diff <= 0) {
+      clearInterval(interval);
+      labelTimer.innerHTML = "Time's up!";
+      containerApp.style.opacity = 0;
+    }
+  }, 1000);
+};
