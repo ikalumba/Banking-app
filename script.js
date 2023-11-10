@@ -17,7 +17,7 @@ const account1 = {
     '2020-05-08T14:11:59.604Z',
     '2023-07-09T17:01:17.194Z',
     '2023-07-11T23:36:17.929Z',
-    '2023-07-12T10:51:36.790Z',
+    '2023-11-09T10:51:36.790Z',
   ],
   currency: 'EUR',
   locale: 'pt-PT', // de-DE
@@ -59,6 +59,18 @@ const account4 = {
 
 let accounts = [account1, account2, account3, account4];
 
+// Creating account usernames
+const createUserNames = function (accs) {
+  accs.forEach(acc => {
+    acc.username = acc.owner
+      .toLowerCase()
+      .split(' ')
+      .map(name => name[0])
+      .join('');
+  });
+};
+createUserNames(accounts);
+
 // Elements
 const labelWelcome = document.querySelector('.welcome');
 const labelDate = document.querySelector('.date');
@@ -87,7 +99,6 @@ const inputClosePin = document.querySelector('.form__input--pin');
 
 /////////////////////////////////////////////////
 /////////////////////////////////////////////////
-// LECTURES
 
 const currencies = new Map([
   ['USD', 'United States dollar'],
@@ -99,14 +110,17 @@ const movements = [200, 450, -400, 3000, -650, -130, 70, 1300];
 
 //////////////////////REDO
 
-const displayMovements = function (account) {
-  account.movements.forEach(function (mov, i) {
+const displayMovements = function (account, sort = false) {
+  containerMovements.innerHTML = '';
+  const movs = sort
+    ? account.movements.slice().sort((a, b) => a - b)
+    : account.movements;
+  movs.forEach(function (mov, i) {
     const date = account.movementsDates[i];
     const formatMovementDate = function () {
       const date1 = new Date(date);
       const date2 = new Date();
       const daysPassed = Math.floor((date2 - date1) / (1000 * 60 * 60 * 24));
-      console.log(daysPassed);
 
       if (daysPassed === 0) return 'Today';
       if (daysPassed === 1) return 'Yesterday';
@@ -127,8 +141,8 @@ const displayMovements = function (account) {
   });
 };
 
-// Calculating the total deposits
-const displaySummary = function (account) {
+// Calculating the total deposits, withdrawals, interest and account balance
+const displayUI = function (account) {
   const totalDeposits = account.movements
     .filter(mov => mov > 0)
     .reduce((acc, curr) => acc + curr);
@@ -144,28 +158,18 @@ const displaySummary = function (account) {
     .map(mov => (mov * currentAccount.interestRate) / 100)
     .reduce((acc, int) => acc + int, 0);
   labelSumInterest.textContent = interest;
-};
 
-const displayUI = function (account) {
-  const accountBal = account.movements.reduce((acc, curr) => acc + curr);
+  const accountBal = account.movements.reduce((acc, curr) => acc + curr, 0);
+  console.log(accountBal);
   labelBalance.textContent = accountBal;
 
+  displayMovements(account);
+};
+
+const displayWelcomeMessage = function (account) {
   const firstName = account.owner.split(' ').splice(0, 1).join('');
   labelWelcome.textContent = `Welcome ${firstName}!`;
 };
-
-console.log(new Date().toLocaleDateString());
-
-const createUserNames = function (accs) {
-  accs.forEach(acc => {
-    acc.username = acc.owner
-      .toLowerCase()
-      .split(' ')
-      .map(name => name[0])
-      .join('');
-  });
-};
-createUserNames(accounts);
 
 // account1.movements.push(5000);
 let currentAccount;
@@ -190,10 +194,9 @@ btnLogin.addEventListener('click', function (e) {
       new Date()
     );
     labelDate.textContent = currentDate;
-    displayMovements(currentAccount);
     displayUI(currentAccount);
-    displaySummary(currentAccount);
     runTimer();
+    displayWelcomeMessage(currentAccount);
 
     btnTransfer.addEventListener('click', function (e) {
       e.preventDefault();
@@ -205,8 +208,8 @@ btnLogin.addEventListener('click', function (e) {
       recipientAcc.movementsDates.push(new Date().toISOString());
       currentAccount.movements.push(-transferAmount);
       currentAccount.movementsDates.push(new Date().toISOString());
-      containerMovements.innerHTML = '';
-      displayMovements(currentAccount);
+      // Updating UI
+      displayUI(currentAccount);
 
       // clear form
       inputTransferTo.value = '';
@@ -214,30 +217,34 @@ btnLogin.addEventListener('click', function (e) {
     });
     btnLoan.addEventListener('click', function (e) {
       e.preventDefault();
-      const reqLoanAmount = inputLoanAmount.value;
+      const reqLoanAmount = Number(inputLoanAmount.value);
       const loanLimit = Math.max(...currentAccount.movements) * 0.25;
       console.log(loanLimit);
       if (loanLimit >= reqLoanAmount) {
         setTimeout(function () {
-          containerMovements.innerHTML = '';
           currentAccount.movements.push(reqLoanAmount);
           currentAccount.movementsDates.push(new Date().toISOString());
-          displayMovements(currentAccount);
+
+          displayUI(currentAccount);
         }, 4000);
       } else {
         alert(
           `The requested loan amount is too high, it should be at most 25% of your highest deposited amount`
         );
       }
+      // clearing form
       inputLoanAmount.value = '';
     });
     btnClose.addEventListener('click', function (e) {
       e.preventDefault();
       closeAccount(currentAccount);
     });
+
+    let sorted = false;
     btnSort.addEventListener('click', function (e) {
       e.preventDefault();
-      sortMovements(currentAccount);
+      displayMovements(currentAccount, !sorted);
+      sorted = !sorted;
     });
   }
 
@@ -300,6 +307,6 @@ const sortMovements = function (account) {
   } else {
     clicked = true;
     containerMovements.innerHTML = '';
-    displayMovements(currentAccount.movements);
+    displayMovements(currentAccount);
   }
 };
