@@ -19,8 +19,8 @@ const account1 = {
     '2023-07-11T23:36:17.929Z',
     '2023-11-09T10:51:36.790Z',
   ],
-  currency: 'EUR',
-  locale: 'pt-PT', // de-DE
+  currency: 'UGX',
+  locale: 'en-GB',
 };
 
 const account2 = {
@@ -116,6 +116,10 @@ const displayMovements = function (account, sort = false) {
     ? account.movements.slice().sort((a, b) => a - b)
     : account.movements;
   movs.forEach(function (mov, i) {
+    const formatedMovs = new Intl.NumberFormat(account.locale, {
+      style: 'currency',
+      currency: account.currency,
+    }).format(mov);
     const date = account.movementsDates[i];
     const formatMovementDate = function () {
       const date1 = new Date(date);
@@ -134,7 +138,7 @@ const displayMovements = function (account, sort = false) {
       mov > 0 ? 'deposit' : 'withdrawal'
     }">${i + 1} ${mov > 0 ? 'deposit' : 'withdrawal'}</div>
     <div class="movements__date">${formatMovementDate()}</div>
-    <div class="movements__value">${mov}€</div>
+    <div class="movements__value">${formatedMovs}</div>
   </div>`;
 
     containerMovements.insertAdjacentHTML('afterbegin', html);
@@ -143,25 +147,31 @@ const displayMovements = function (account, sort = false) {
 
 // Calculating the total deposits, withdrawals, interest and account balance
 const displayUI = function (account) {
+  const formatFigures = function (num) {
+    return new Intl.NumberFormat(account.locale, {
+      style: 'currency',
+      currency: account.currency,
+    }).format(num);
+  };
   const totalDeposits = account.movements
     .filter(mov => mov > 0)
     .reduce((acc, curr) => acc + curr);
-  labelSumIn.textContent = totalDeposits;
+  labelSumIn.textContent = formatFigures(totalDeposits);
 
   const totalWithdrawal = account.movements
     .filter(mov => mov < 0)
     .reduce((acc, curr) => acc + curr);
-  labelSumOut.textContent = totalWithdrawal;
+  labelSumOut.textContent = formatFigures(totalWithdrawal);
 
   const interest = account.movements
     .filter(mov => mov > 0)
     .map(mov => (mov * currentAccount.interestRate) / 100)
     .reduce((acc, int) => acc + int, 0);
-  labelSumInterest.textContent = interest;
+  labelSumInterest.textContent = formatFigures(interest);
 
   const accountBal = account.movements.reduce((acc, curr) => acc + curr, 0);
   console.log(accountBal);
-  labelBalance.textContent = accountBal;
+  labelBalance.textContent = formatFigures(accountBal);
 
   displayMovements(account);
 };
@@ -172,7 +182,7 @@ const displayWelcomeMessage = function (account) {
 };
 
 // account1.movements.push(5000);
-let currentAccount;
+let currentAccount, timer;
 // Logging in
 btnLogin.addEventListener('click', function (e) {
   e.preventDefault();
@@ -187,15 +197,17 @@ btnLogin.addEventListener('click', function (e) {
       minute: 'numeric',
       day: 'numeric',
       month: 'long',
-      year: 'long',
+      year: 'numeric',
       weekday: 'long',
     };
-    const currentDate = new Intl.DateTimeFormat(currentAccount.locale).format(
-      new Date()
-    );
+    const currentDate = new Intl.DateTimeFormat(
+      currentAccount.locale,
+      options
+    ).format(new Date());
     labelDate.textContent = currentDate;
     displayUI(currentAccount);
-    runTimer();
+    if (timer) clearInterval(timer);
+    timer = runTimer();
     displayWelcomeMessage(currentAccount);
 
     btnTransfer.addEventListener('click', function (e) {
@@ -214,6 +226,11 @@ btnLogin.addEventListener('click', function (e) {
       // clear form
       inputTransferTo.value = '';
       inputTransferAmount.value = '';
+
+      //Timer
+      if (timer) clearInterval(timer);
+
+      timer = startLogOutTimer();
     });
     btnLoan.addEventListener('click', function (e) {
       e.preventDefault();
@@ -262,7 +279,8 @@ const runTimer = function () {
   // endTime.setMinutes(endTime.getMinutes() + 5);
 
   // Update the timer every second
-  const interval = setInterval(function () {
+
+  const tick = function () {
     // Get the current time
     const now = new Date();
     // Calculate the time difference in milliseconds
@@ -276,13 +294,16 @@ const runTimer = function () {
       .padStart(2, '0')} `;
     // If the time is up, stop the interval and display a message
     if (diff <= 0) {
-      clearInterval(interval);
+      clearInterval(timer);
       labelTimer.innerHTML = "Time's up!";
       containerApp.style.opacity = 0;
       currentAccount = '';
-      labelWelcome = 'Log in to get started';
+      labelWelcome.textContent = 'Log in to get started';
     }
-  }, 1000);
+  };
+  tick();
+  const timer = setInterval(tick, 1000);
+  return timer;
 };
 
 const closeAccount = function (account) {
@@ -310,3 +331,7 @@ const sortMovements = function (account) {
     displayMovements(currentAccount);
   }
 };
+window.addEventListener('beforeunload', function (e) {
+  e.preventDefault();
+  e.returnValue = '';
+});
